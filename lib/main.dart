@@ -24,6 +24,8 @@ class _MainState extends State<Main> {
   late TextEditingController _passwordController;
   late TextEditingController _commandController;
 
+  late ScrollController _consoleScrollController;
+
   var _connectionState = ConnectionState.disconnected;
   var _authState = AuthState.notAuthenticated;
 
@@ -44,6 +46,8 @@ class _MainState extends State<Main> {
     _portController = TextEditingController(text: '25575');
     _passwordController = TextEditingController();
     _commandController = TextEditingController();
+
+    _consoleScrollController = ScrollController();
   }
 
   @override
@@ -52,6 +56,8 @@ class _MainState extends State<Main> {
     _portController.dispose();
     _passwordController.dispose();
     _commandController.dispose();
+
+    _consoleScrollController.dispose();
     super.dispose();
   }
 
@@ -223,9 +229,11 @@ class _MainState extends State<Main> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       theme: ThemeData.from(
-        colorScheme: const ColorScheme.dark().copyWith(
-          primary: Colors.blue,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blueAccent,
+          brightness: Brightness.dark,
         ),
       ),
       home: Scaffold(
@@ -233,51 +241,161 @@ class _MainState extends State<Main> {
           title: const Text('RCON Client'),
         ),
         body: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(8),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              connectionInfo(),
-              Expanded(
-                child: SingleChildScrollView(
-                  child: SelectableText.rich(
-                    TextSpan(children: parseResponse(_response)),
-                    textWidthBasis: TextWidthBasis.longestLine,
-                  ),
-                ),
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    child: KeyboardListener(
-                      focusNode: _commandFocusNode,
-                      onKeyEvent: handleCommandKeyEvent,
-                      child: TextField(
-                        controller: _commandController,
-                        decoration: const InputDecoration(
-                          labelText: 'Command',
-                        ),
-                        onEditingComplete: () {
-                          sendCommand(_commandController.text);
-                        },
-                        onSubmitted: (_) =>
-                            sendCommand(_commandController.text),
-                      ),
-                    ),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      sendCommand(_commandController.text);
-                    },
-                    child: const Text('Send'),
-                  ),
-                ],
-              ),
+              ...connectionInfo(),
+              consoleWindow(),
+              commandInput(),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  List<Widget> connectionInfo() {
+    return [
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 2,
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: TextField(
+                controller: _hostController,
+                decoration: const InputDecoration(labelText: 'Host'),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: TextField(
+                controller: _portController,
+                decoration: const InputDecoration(labelText: 'Port'),
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: TextField(
+                controller: _passwordController,
+                decoration: const InputDecoration(labelText: 'Password'),
+                obscureText: true,
+              ),
+            ),
+          ),
+        ],
+      ),
+      Padding(
+        padding: const EdgeInsets.all(8),
+        child: Wrap(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: ElevatedButton(
+                onPressed: _connectionState == ConnectionState.disconnected
+                    ? () async {
+                        await connect();
+                      }
+                    : null,
+                child: const Text('Connect'),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: TextButton(
+                onPressed: _connectionState == ConnectionState.connected
+                    ? disconnect
+                    : null,
+                child: const Text('Disconnect'),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(
+                connectionStateIcons[_connectionState],
+                color: connectionStateColors[_connectionState],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Text(connectionStateMessages[_connectionState]!),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(
+                authStateIcons[_authState],
+                color: authStateColors[_authState],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Text(authStateMessages[_authState]!),
+            ),
+            if (_error.isNotEmpty)
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: SelectableText(
+                    _error,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    ];
+  }
+
+  Widget consoleWindow() {
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: SingleChildScrollView(
+          controller: _consoleScrollController,
+          child: SelectableText.rich(
+            TextSpan(children: parseResponse(_response)),
+            textWidthBasis: TextWidthBasis.longestLine,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget commandInput() {
+    return Row(
+      children: [
+        Expanded(
+          child: KeyboardListener(
+            focusNode: _commandFocusNode,
+            onKeyEvent: handleCommandKeyEvent,
+            child: TextField(
+              controller: _commandController,
+              decoration: const InputDecoration(
+                labelText: 'Command',
+              ),
+              onEditingComplete: () {
+                sendCommand(_commandController.text);
+              },
+              onSubmitted: (_) => sendCommand(_commandController.text),
+            ),
+          ),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            sendCommand(_commandController.text);
+          },
+          child: const Text('Send'),
+        ),
+      ],
     );
   }
 
@@ -320,106 +438,6 @@ class _MainState extends State<Main> {
         print(_commandController.text);
       }
     }
-  }
-
-  Widget connectionInfo() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 2,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: _hostController,
-                decoration: const InputDecoration(labelText: 'Host'),
-              ),
-              TextField(
-                controller: _portController,
-                decoration: const InputDecoration(labelText: 'Port'),
-              ),
-              TextField(
-                controller: _passwordController,
-                decoration: const InputDecoration(labelText: 'Password'),
-                obscureText: true,
-              ),
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: Row(
-                  children: [
-                    ElevatedButton(
-                      onPressed:
-                          _connectionState == ConnectionState.disconnected
-                              ? () async {
-                                  await connect();
-                                }
-                              : null,
-                      child: const Text('Connect'),
-                    ),
-                    ElevatedButton(
-                      onPressed: _connectionState == ConnectionState.connected
-                          ? disconnect
-                          : null,
-                      child: const Text('Disconnect'),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ConnectionState
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: Row(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(4),
-                      child: Icon(
-                        connectionStateIcons[_connectionState],
-                        color: connectionStateColors[_connectionState],
-                      ),
-                    ),
-                    Text(connectionStateMessages[_connectionState]!),
-                  ],
-                ),
-              ),
-              // AuthState
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: Row(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(4),
-                      child: Icon(
-                        authStateIcons[_authState],
-                        color: authStateColors[_authState],
-                      ),
-                    ),
-                    Text(authStateMessages[_authState]!),
-                  ],
-                ),
-              ),
-              if (_error.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: SelectableText(
-                    _error,
-                    style: const TextStyle(color: Colors.red),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
   }
 
   List<InlineSpan> parseResponse(List<(String, Color)> response) {
