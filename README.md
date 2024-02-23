@@ -12,7 +12,7 @@ Theoretically, this app should work on all platforms that Flutter supports. Howe
 
 | Android |  iOS  | MacOS | Windows | Linux |
 | :-----: | :---: | :---: | :-----: | :---: |
-|    ❓    |   ❓   |   ❓   |    ✅    |   ❓   |
+|    ✅    |   ❓   |   ❓   |    ✅    |   ❓   |
 
 ## Getting Started
 
