@@ -1,9 +1,9 @@
-// ignore_for_file: avoid_print
 import 'dart:io';
 
 import 'package:fl_rcon_client/command_history.dart';
 import 'package:fl_rcon_client/minecraft_chat_parser.dart';
 import 'package:fl_rcon_client/rcon.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -36,6 +36,8 @@ class _MainState extends State<Main> {
 
   int _packetIdCounter = 3;
 
+  late FocusNode _commandFocusNode;
+
   final _commandHistory = CommandHistory();
 
   @override
@@ -48,6 +50,12 @@ class _MainState extends State<Main> {
     _commandController = TextEditingController();
 
     _consoleScrollController = ScrollController();
+
+    _commandFocusNode = FocusNode(
+      onKeyEvent: (node, event) {
+        return handleCommandKeyEvent(event);
+      },
+    );
   }
 
   @override
@@ -58,6 +66,8 @@ class _MainState extends State<Main> {
     _commandController.dispose();
 
     _consoleScrollController.dispose();
+
+    _commandFocusNode.dispose();
     super.dispose();
   }
 
@@ -135,7 +145,7 @@ class _MainState extends State<Main> {
   }
 
   void handleRCONPacket(RCONPacket packet) {
-    print(packet);
+    debPrint(packet);
     if (packet.id == -1) {
       setState(() {
         _authState = AuthState.error;
@@ -165,7 +175,7 @@ class _MainState extends State<Main> {
 
     await _socket!.flush();
 
-    print('Sent login packet: $packet');
+    debPrint('Sent login packet: $packet');
 
     setState(() {
       _authState = AuthState.authenticating;
@@ -205,12 +215,12 @@ class _MainState extends State<Main> {
     );
     _socket!.add(packet.toBytes());
 
-    print('Sent command: $command as packet: $packet');
+    debPrint('Sent command: $command as packet: $packet');
 
     setState(() {
       _commandHistory.add(command);
       _commandHistory.reset();
-      print(_commandHistory);
+      debPrint(_commandHistory);
       _commandController.clear();
     });
   }
@@ -339,19 +349,17 @@ class _MainState extends State<Main> {
               padding: const EdgeInsets.all(8),
               child: Text(authStateMessages[_authState]!),
             ),
-            if (_error.isNotEmpty)
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: SelectableText(
-                    _error,
-                    style: const TextStyle(color: Colors.red),
-                  ),
-                ),
-              ),
           ],
         ),
       ),
+      if (_error.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: SelectableText(
+            _error,
+            style: const TextStyle(color: Colors.red),
+          ),
+        ),
     ];
   }
 
@@ -374,19 +382,16 @@ class _MainState extends State<Main> {
     return Row(
       children: [
         Expanded(
-          child: KeyboardListener(
+          child: TextField(
+            controller: _commandController,
             focusNode: _commandFocusNode,
-            onKeyEvent: handleCommandKeyEvent,
-            child: TextField(
-              controller: _commandController,
-              decoration: const InputDecoration(
-                labelText: 'Command',
-              ),
-              onEditingComplete: () {
-                sendCommand(_commandController.text);
-              },
-              onSubmitted: (_) => sendCommand(_commandController.text),
+            decoration: const InputDecoration(
+              labelText: 'Command',
             ),
+            onEditingComplete: () {
+              sendCommand(_commandController.text);
+            },
+            onSubmitted: (_) => sendCommand(_commandController.text),
           ),
         ),
         ElevatedButton(
@@ -399,15 +404,12 @@ class _MainState extends State<Main> {
     );
   }
 
-  final _commandFocusNode = FocusNode();
-
-  void handleCommandKeyEvent(KeyEvent event) {
+  KeyEventResult handleCommandKeyEvent(KeyEvent event) {
     if (event is KeyDownEvent) {
       // on up key get previous command from history
       if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
         final previousCommand = _commandHistory.getPrevious();
-        print(_commandHistory);
-        print(previousCommand);
+
         if (previousCommand != null) {
           _commandController.value = TextEditingValue(
             text: previousCommand,
@@ -418,11 +420,11 @@ class _MainState extends State<Main> {
         } else {
           _commandController.clear();
         }
-        print(_commandController.text);
+
+        return KeyEventResult.handled;
       } else if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
         final nextCommand = _commandHistory.getNext();
-        print(_commandHistory);
-        print(nextCommand);
+
         if (nextCommand != null) {
           setState(() {
             _commandController.value = TextEditingValue(
@@ -435,9 +437,11 @@ class _MainState extends State<Main> {
         } else {
           _commandController.clear();
         }
-        print(_commandController.text);
+
+        return KeyEventResult.handled;
       }
     }
+    return KeyEventResult.ignored;
   }
 
   List<InlineSpan> parseResponse(List<(String, Color)> response) {
@@ -503,4 +507,10 @@ enum AuthState {
   authenticating,
   authenticated,
   error,
+}
+
+void debPrint(Object? object) {
+  if (kDebugMode) {
+    print(object);
+  }
 }
