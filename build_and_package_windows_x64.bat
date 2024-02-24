@@ -26,7 +26,7 @@ if not !ERRORLEVEL! == 0 (
 )
 
 :: Use PowerShell to compress the Release directory into a .zip file
-PowerShell -Command "Compress-Archive -Path '.\build\windows\x64\runner\Release\*' -DestinationPath '.\build\windows\x64\!APP_NAME!-!VERSION!.zip'"
+PowerShell -Command "Compress-Archive -Path '.\build\windows\x64\runner\Release\*' -DestinationPath '.\build\windows\x64\!APP_NAME!-!VERSION!-windows-x64.zip'"
 
 if not !ERRORLEVEL! == 0 (
     echo Failed to create zip archive
