@@ -12,9 +12,9 @@ function return_to_initial_dir {
 # cd "$(dirname "$0")/.."
 
 # Read version from pubspec.yaml
-VERSION=$(awk '/version: / {print $2}' pubspec.yaml)
+VERSION=$(awk '/version: / {print $2}' pubspec.yaml | tr -d '\n' | tr -d '\r')
 
-APPNAME=mc_rcon_client
+APPNAME="mc_rcon_client"
 
 if [ -z "$VERSION" ]; then
   echo "Version not found in pubspec.yaml"
@@ -22,7 +22,7 @@ if [ -z "$VERSION" ]; then
   exit 1
 fi
 
-echo "Building version $VERSION"
+echo "Building ${APPNAME} version ${VERSION}"
 
 # Run Flutter build for Linux
 flutter build linux --release
@@ -38,9 +38,9 @@ fi
 cd build/linux/x64/release/bundle || exit
 
 # Create a tarball with the app version included in the filename
-tar -czvf "../../../$APPNAME-$VERSION-linux-x64.tar.gz" *
+tar -czvf "../../../${APPNAME}-${VERSION}-linux-x64.tar.gz" *
 
-echo "Package $APPNAME-$VERSION-linux-x64.tar.gz created successfully"
+echo "Package ${APPNAME}-${VERSION}-linux-x64.tar.gz created successfully"
 
 # Return to the initial directory
 return_to_initial_dir
