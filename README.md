@@ -8,11 +8,11 @@ This is a simple RCON client for Minecraft servers. It is built with Flutter and
 
 ## Platform Support
 
-Theoretically, this app should work on all platforms that Flutter supports. However, it has only been tested on Windows. If you have tested it on another platform, please let me know by opening an issue.
+Theoretically, this app should work on all platforms that Flutter supports. However, it has only been tested on Windows, Android and Linux. If you have tested it on another platform, please let me know by opening an issue.
 
 | Android |  iOS  | MacOS | Windows | Linux |
 | :-----: | :---: | :---: | :-----: | :---: |
-|    ✅    |   ❓   |   ❓   |    ✅    |   ❓   |
+|    ✅    |   ❓   |   ❓   |    ✅    |   ✅   |
 
 ## Getting Started
 
